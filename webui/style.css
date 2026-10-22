@@ -1,0 +1,321 @@
+/* videoUpEnlarge 引擎 WebUI —— 与平台其余引擎 WebUI 同一定位：
+ * 纯静态、无构建、单文件样式。深浅色跟随系统（prefers-color-scheme）。 */
+
+:root {
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --border: #e2e5ea;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --accent-fg: #ffffff;
+    --ok: #16a34a;
+    --err: #dc2626;
+    --warn: #d97706;
+    --code-bg: #f2f4f7;
+    --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #0f1115;
+        --panel: #171a20;
+        --border: #272c34;
+        --text: #e6e8eb;
+        --muted: #98a1ac;
+        --accent: #3b82f6;
+        --code-bg: #1d222a;
+    }
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 0 0 32px;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 22px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand h1 { margin: 0; font-size: 16px; font-weight: 500; }
+
+.dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--muted); flex: none;
+}
+.dot.ready { background: var(--ok); }
+.dot.busy { background: var(--warn); }
+.dot.error { background: var(--err); }
+
+.tag {
+    font-size: 12px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 1px 9px;
+}
+
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.meta { font-size: 12px; color: var(--muted); margin-right: 4px; }
+
+/* ---------- 布局 ---------- */
+
+.layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    padding: 18px 22px;
+    max-width: 1180px;
+    margin: 0 auto;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px 18px;
+}
+
+.panel.wide { grid-column: 1 / -1; }
+
+.panel-title {
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: .02em;
+}
+
+/* ---------- 表单 ---------- */
+
+.label {
+    display: block;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+}
+
+.field { margin-bottom: 16px; }
+.field:last-child { margin-bottom: 0; }
+
+.input {
+    width: 100%;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+}
+.input:focus { border-color: var(--accent); }
+
+.row { display: flex; align-items: center; gap: 8px; }
+.times { color: var(--muted); }
+
+.hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+}
+
+code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 1px 4px;
+}
+
+/* ---------- 分段控件 / Tab ---------- */
+
+.tabs, .segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 2px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 14px;
+}
+.tabs { margin-bottom: 14px; }
+
+.tab, .seg {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 13px;
+    padding: 5px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.tab.active, .seg.active {
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .08);
+}
+
+.tab-pane.hidden, .field.hidden, .result.hidden, .picked.hidden { display: none; }
+
+/* ---------- 拖放区 ---------- */
+
+.dropzone {
+    border: 1.5px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 26px 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.dropzone:hover, .dropzone.over {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.dz-icon { font-size: 22px; color: var(--muted); line-height: 1; margin-bottom: 8px; }
+.dz-main { font-size: 13px; }
+.dz-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.link {
+    border: 0; background: none; padding: 0;
+    color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline;
+}
+
+/* ---------- 已选视频 ---------- */
+
+.picked {
+    margin-top: 14px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+}
+.picked-row { display: flex; gap: 10px; padding: 2px 0; }
+.picked-label { color: var(--muted); flex: none; width: 62px; }
+.picked-path, .picked-meta { font-family: var(--mono); word-break: break-all; }
+
+/* ---------- 高级选项 ---------- */
+
+.adv { margin-top: 4px; border-top: 1px solid var(--border); padding-top: 12px; }
+.adv summary {
+    cursor: pointer; font-size: 12px; color: var(--muted);
+    list-style: none; user-select: none;
+}
+.adv summary::-webkit-details-marker { display: none; }
+.adv summary::before { content: "▸ "; }
+.adv[open] summary::before { content: "▾ "; }
+
+.adv-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px 12px;
+    margin-top: 12px;
+}
+.adv-full { grid-column: 1 / -1; margin-top: 2px; }
+
+.mini { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--muted); }
+.mini.check { flex-direction: row; align-items: center; gap: 7px; padding-top: 18px; }
+
+/* ---------- 运行条 ---------- */
+
+.runbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.progress-wrap { flex: 1 1 320px; min-width: 220px; }
+
+.progress {
+    height: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.bar {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width .3s ease;
+}
+
+.progress-text {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted); margin-top: 6px;
+}
+
+/* ---------- 按钮 ---------- */
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font: inherit; font-size: 13px; font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.btn.sm { padding: 5px 11px; font-size: 12px; font-weight: 400; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; color: var(--text); border-color: var(--border); }
+.btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+.btn.danger.ghost { color: var(--err); border-color: var(--border); }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+/* ---------- 结果 ---------- */
+
+.result { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.result video {
+    width: 100%; max-height: 420px;
+    background: #000; border-radius: 8px; display: block;
+}
+.result-meta {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    font-size: 12px; color: var(--muted); margin: 12px 0;
+}
+.result-meta b { color: var(--text); font-weight: 500; }
+.result-actions { display: flex; gap: 8px; }
+
+/* ---------- 日志 ---------- */
+
+.log {
+    margin-top: 16px;
+    max-height: 190px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+.log:empty { display: none; }
+.log .e { color: var(--err); }
+.log .w { color: var(--warn); }
+.log .o { color: var(--ok); }
+
+@media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .adv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
