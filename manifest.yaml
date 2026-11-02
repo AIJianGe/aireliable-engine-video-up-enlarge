@@ -31,7 +31,7 @@
 # ===== v0.1 必需字段 =====
 engine_id: video_up_enlarge_98782fcd
 engine_name: VideoUpEnlarge
-engine_version: 0.1.0
+engine_version: 1.0.0
 aireliable_compat: ">=0.0.16"
 uv_env_name: video-upenlarge
 export_mode: source
@@ -73,6 +73,11 @@ third_party_references:
     github: https://github.com/FFmpeg/FFmpeg
     license: LGPL-2.1-or-later
     description: 抽帧 / 合帧 / 音轨回填（通过 imageio-ffmpeg 分发或系统 PATH 调用，未静态链接）
+
+# 升级信息（2026-11-02 补齐 upgrade 块：检查自家引擎仓库 tag）
+upgrade:
+  check_url: https://api.github.com/repos/AIJianGe/aireliable-engine-video-up-enlarge/releases/latest
+  auto_check: true
 
 # integrated 范式不依赖节点包
 node_packages: []
