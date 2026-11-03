@@ -15,160 +15,35 @@
 ⚠️ 阶段名只使用上面这一组（不额外发明新阶段）：网关与前端对阶段文案有既有
 渲染逻辑，新增未知阶段名只会退化为纯文本展示，收益低而风险高。抽帧进度因此
 并入 ``preparing``，超分进度并入 ``processing``。
+
+任务 71 P0-B：通用帧构造 / 任务上报 / 心跳 / 完成帧全部由 SDK
+``BaseProgressReporter`` 提供，本文件只保留阶段常量与语义化方法。
 """
 
 from __future__ import annotations
 
-import logging
-import time
-from typing import Any, Optional
-
-from aireliable_engine import (
-    SSEStream,
-    get_platform_task_reporter,
-    make_error_frame,
-    make_final_frame,
-    make_frame,
-    PlatformTaskReporter,
-)
+from aireliable_engine.progress import BaseProgressReporter
 
 from .upscale_wrapper import UpEnlargeProgressStage
-
-logger = logging.getLogger(__name__)
 
 
 # 进度阶段（复用 wrapper 的定义，避免双源漂移）
 ProgressStage = UpEnlargeProgressStage
 
 
-class ProgressReporter:
-    """videoUpEnlarge 进度上报器。
+class ProgressReporter(BaseProgressReporter):
+    """videoUpEnlarge 进度上报器（阶段语义 + SDK 通用帧）。"""
 
-    封装 SSEStream，提供按阶段构造帧的便捷方法；
-    v0.3.4+ 同时通过 SDK PlatformTaskReporter 上报任务状态到 gateway。
-    """
-
-    def __init__(
-        self,
-        stream: SSEStream,
-        task_reporter: Optional[PlatformTaskReporter] = None,
-    ):
-        """初始化进度上报器。
-
-        Args:
-            stream: SSE 流
-            task_reporter: 可选的 SDK 任务上报器；为 None 时仅推送 SSE
-        """
-        self.stream = stream
-        self._start_time: float = time.time()
-        self._task_reporter: Optional[PlatformTaskReporter] = task_reporter
-        self._task_id: Optional[str] = None
-
-    @property
-    def elapsed(self) -> float:
-        """已用时（秒）。"""
-        return time.time() - self._start_time
-
-    def set_task_id(self, task_id: str) -> None:
-        """设置任务 ID（用于 SDK 上报）。"""
-        self._task_id = task_id
-
-    async def init_task_reporter(self) -> None:
-        """v0.3.4+ 异步初始化 SDK 任务上报器。
-
-        必须在 emit_* 方法之前调用（_infer_impl 入口处）。失败不阻断推理。
-        """
-        if self._task_reporter is None and self._task_id:
-            try:
-                self._task_reporter = await get_platform_task_reporter()
-            except Exception as e:
-                logger.warning("init_task_reporter 失败（不阻断推理）: %s", e)
-
-    async def report_created(
-        self,
-        request_summary: dict,
-        variant: str = "",
-        task_type: str = "",
-    ) -> None:
-        """v0.3.4+ 上报任务创建到 gateway（status=queued）。"""
-        if self._task_reporter and self._task_id:
-            try:
-                await self._task_reporter.report_created(
-                    task_id=self._task_id,
-                    request_summary=request_summary,
-                    variant=variant,
-                    task_type=task_type,
-                )
-            except Exception as e:
-                logger.warning("report_created 失败（不阻断推理）: %s", e)
-
-    # ===== SDK 上报（fire-and-forget）=====
-
-    def _fire_running(self, stage: str) -> None:
-        """fire-and-forget 上报任务进入 running 状态。"""
-        if self._task_reporter and self._task_id:
-            self._task_reporter.fire_report_running(self._task_id, stage=stage)
-
-    def _fire_progress(self, progress: float, stage: str) -> None:
-        """fire-and-forget 上报任务进度。"""
-        if self._task_reporter and self._task_id:
-            self._task_reporter.fire_report_progress(
-                self._task_id, progress=progress, stage=stage,
-            )
-
-    def _fire_succeeded(self, result: dict) -> None:
-        """fire-and-forget 上报任务成功。"""
-        if self._task_reporter and self._task_id:
-            self._task_reporter.fire_report_succeeded(self._task_id, result=result)
-
-    def _fire_failed(self, error: dict) -> None:
-        """fire-and-forget 上报任务失败。"""
-        if self._task_reporter and self._task_id:
-            self._task_reporter.fire_report_failed(self._task_id, error=error)
-
-    # ===== 通用帧 =====
-
-    def emit(self, progress: float, stage: str, **extra: Any) -> None:
-        """发送一帧进度（线程安全）。
-
-        超分的进度回调发生在工作线程中，因此统一使用 put_threadsafe，
-        与 stream 绑定的主事件循环线程安全互通。
-        """
-        frame = make_frame(progress, stage, **extra)
-        self.stream.put_threadsafe(frame)
-        self._fire_progress(progress, stage)
-
-    async def emit_async(self, progress: float, stage: str, **extra: Any) -> None:
-        """发送一帧进度（协程内调用）。"""
-        frame = make_frame(progress, stage, **extra)
-        await self.stream.put(frame)
-        self._fire_progress(progress, stage)
-
-    def emit_error(self, message: str, error_type: str = "video_upscale_error") -> None:
-        """发送错误帧。"""
-        frame = make_error_frame(message, error_type)
-        self.stream.put_threadsafe(frame)
-        self._fire_failed({"type": error_type, "message": message})
-
-    def emit_heartbeat(self) -> None:
-        """发送心跳帧（重置 gateway httpx read timeout）。
-
-        超分是分钟级长任务，期间可能出现长时间"无进度变化"的静默段
-        （例如 ncnn 正在处理单张超大帧）。30s 周期推送心跳，
-        避免 gateway read timeout → 502。
-        """
-        self.emit(
-            0.65,
-            ProgressStage.HEARTBEAT,
-            message="超分处理中（心跳）",
-            elapsed=self.elapsed,
-        )
+    error_type = "video_upscale_error"
+    heartbeat_progress = 0.65
+    heartbeat_stage = UpEnlargeProgressStage.HEARTBEAT
+    heartbeat_message = "超分处理中（心跳）"
 
     # ===== 阶段便捷方法 =====
 
     def emit_start(self, task_id: str, description: str = "") -> None:
         """开始处理。"""
-        self._task_id = task_id
+        self.set_task_id(task_id)
         self.emit(
             0.0,
             ProgressStage.START,
@@ -212,13 +87,7 @@ class ProgressReporter:
 
     async def emit_completed(self, task_id: str, result: dict) -> None:
         """完成（progress=1.0，携带 result 供网关解析产物）。"""
-        timing = {
-            "total_seconds": self.elapsed,
-        }
-        final_payload = {
-            "task_id": task_id,
-            **result,
-        }
-        frame = make_final_frame(final_payload, timing)
-        await self.stream.put(frame)
-        self._fire_succeeded(final_payload)
+        await super().emit_completed(
+            {"task_id": task_id, **result},
+            {"total_seconds": self.elapsed},
+        )

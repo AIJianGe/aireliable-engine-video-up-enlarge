@@ -30,6 +30,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from aireliable_engine import EngineConfig as BaseEngineConfig
+
 # ===== 常量 =====
 
 ENGINE_ID = "video_up_enlarge_98782fcd"
@@ -127,34 +129,23 @@ def resolve_ffprobe(explicit: Optional[str] = None) -> Optional[str]:
 
 
 @dataclass
-class EngineConfig:
+class EngineConfig(BaseEngineConfig):
     """videoUpEnlarge 引擎运行配置。"""
 
-    # ===== 基础 =====
+    # ===== 基础（身份 / 端口默认值由本引擎覆盖，其余公共字段见基类）=====
     engine_id: str = ENGINE_ID
     engine_name: str = ENGINE_NAME
     capability: str = CAPABILITY
     engine_type: str = ENGINE_TYPE
     port: int = DEFAULT_PORT
-    host: str = "127.0.0.1"
 
     # ===== 路径 =====
-    models_root: Path = Path("models")
-    data_root: Path = Path("data")
-    project_root: Path = Path(".")
-    output_root: Path = Path("output")
     # 抽帧 / 合帧临时目录根（默认落在项目盘，避免系统盘被数 GB 抽帧撑满）
     work_root: Optional[Path] = None
 
     # ===== 推导路径 =====
     model_dir: Path = field(init=False)
     log_dir: Path = field(init=False)
-
-    # ===== 设备 =====
-    # auto: 有 CUDA 则 cuda:0，否则交给 Vulkan 自动选择
-    # cpu : 强制 CPU（ncnn -g -1）
-    # cuda:N / gpu:N：指定 GPU
-    device: str = "auto"
 
     # ===== 外部工具 =====
     ffmpeg_path: Optional[str] = None
@@ -169,9 +160,6 @@ class EngineConfig:
     output_crf: int = 17
     # 保留临时抽帧目录（排障用）
     keep_temp: bool = False
-
-    # ===== 日志 =====
-    log_level: str = "INFO"
 
     def __post_init__(self) -> None:
         """推导子路径、统一绝对化并创建运行时目录。

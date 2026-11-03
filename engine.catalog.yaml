@@ -1,0 +1,43 @@
+# 开源引擎中心展示元数据（任务 80 / T4.1）
+schema: 1
+engine_id: video_up_enlarge_98782fcd
+
+name:
+  zh: "视频高清放大"
+  en: "Video Up Enlarge"
+
+description:
+  zh: "视频高清放大引擎：Real-ESRGAN 超分（2x/3x/4x 或指定分辨率），抽帧、超分、合帧并回填原音轨。"
+  en: "Video upscaling engine using Real-ESRGAN (2x/3x/4x or custom resolution) with frame extraction, upscaling and audio remux."
+
+category: video
+tags:
+  - upscale
+  - super-resolution
+  - video
+
+repository:
+  github: AIJianGe/aireliable-engine-video-up-enlarge
+  gitee: AIJianGe/aireliable-engine-video-up-enlarge
+
+cover: catalog/covers/video_up_enlarge_98782fcd.webp
+
+requirements:
+  python: ">=3.10,<3.13"
+  gpu: required
+
+license: PolyForm-Noncommercial-1.0.0
+
+description_long:
+  zh: |-
+    视频高清放大引擎使用 Real-ESRGAN 做逐帧超分，支持 2x / 3x / 4x 倍率，也可以直接指定目标分辨率。
+
+    处理链路为抽帧、超分、合帧并回填原音轨，输出的帧率与音轨与原视频保持一致；倍率越高、时长越长，显存占用与耗时增长越明显。
+
+    适合老素材修复、低清视频上采与交付前放大。需要 NVIDIA GPU；源片噪点较多时建议先做降噪再超分。
+  en: |-
+    The video upscaling engine applies Real-ESRGAN super-resolution per frame, supporting 2x, 3x and 4x factors or an explicit target resolution.
+
+    The pipeline extracts frames, upscales them, then reassembles the video and remuxes the original audio track, keeping frame rate and audio unchanged. Higher factors and longer clips increase VRAM usage and runtime.
+
+    It suits restoring old footage, upscaling low-resolution video and final-delivery enlargement. An NVIDIA GPU is required; for noisy sources, denoise before upscaling.
